@@ -25,3 +25,40 @@ module tt_um_example (
   wire _unused = &{ena, clk, rst_n, 1'b0};
 
 endmodule
+
+module fir3 (
+    input  wire              clk,
+    input  wire              rst_n,
+    input  wire signed [7:0]  sample_in,
+    output reg  signed [7:0]  sample_out
+);
+
+    // Memory: the previous two input samples.
+    reg signed [7:0] delay1;
+    reg signed [7:0] delay2;
+
+    // Widen BEFORE doing arithmetic so intermediate values cannot overflow.
+    wire signed [9:0] x0;
+    wire signed [9:0] x1;
+    wire signed [9:0] x2;
+    wire signed [9:0] sum;
+
+    assign x0 = {{2{sample_in[7]}}, sample_in};
+    assign x1 = {{2{delay1[7]}}, delay1};
+    assign x2 = {{2{delay2[7]}}, delay2};
+    assign sum = x0 + (x1 <<< 1) + x2;
+
+    // Clocked logic: synchronous, active-low reset.
+    always @(posedge clk) begin
+        if (!rst_n) begin
+            delay1     <= 8'sd0;
+            delay2     <= 8'sd0;
+            sample_out <= 8'sd0;
+        end else begin
+            delay1     <= sample_in;
+            delay2     <= delay1;
+            sample_out <= sum >>> 2;
+        end
+    end
+
+endmodule
